@@ -2,7 +2,7 @@
 
 Веб-шпаргалка по командам Git с поиском и фильтрацией по категориям. Быстрое нахождение нужной команды, просмотр синтаксиса, флагов и примеры использования.
 
-**Живой сайт:** 
+**Рабочий сайт:** https://git-cheat.vercel.app
 
 ## Возможности
 
@@ -22,8 +22,7 @@
 ## Запуск локально
 
 ```bash
-git clone https://github.com/login/git-cheat.git
-cd git-cheat
+git clone https://github.com/vulkan790/GitCheat.git
 npm install
 ```
 
@@ -48,3 +47,52 @@ npm run dev
 - `src/lib/supabase.js` — клиент Supabase
 - `src/router/` — маршруты
 
+# Git Cheat
+
+A web-based Git command cheat sheet with search and category filtering. Quickly find the command you need and view its syntax, flags, and usage examples.
+
+**Live site:** https://git-cheat.vercel.app
+
+## Features
+
+- Search commands by name
+- Filter by category (basics, branching, remote, undo, stash, config)
+- Detailed page for each command: syntax, common flags, examples, warnings
+- Responsive layout for desktop, tablet, and mobile
+
+## Stack
+
+- **Vue 3** — Frontend
+- **HTML/CSS** — Base styling
+- **Vue Router** — Routing
+- **Supabase (PostgreSQL)** — Command database
+- **Vite** — Build tool
+
+## Running locally
+
+```bash
+git clone https://github.com/vulkan790/GitCheat.git
+cd GitCheat
+npm install
+```
+
+Create a `.env` file in the root:
+
+```
+VITE_SUPABASE_URL=your_project_url
+VITE_SUPABASE_ANON_KEY=your_publishable_key
+```
+
+Start the dev server:
+
+```bash
+npm run dev
+```
+
+## Structure
+
+- `src/pages/HomePage.vue` — home: search, categories, command list
+- `src/pages/CommandPage.vue` — command detail page
+- `src/components/CommandCard.vue` — command card
+- `src/lib/supabase.js` — Supabase client
+- `src/router/` — routes
