@@ -30,8 +30,8 @@ npm install
 Создайте файл `.env` в корне:
 
 ```js
-VITE_SUPABASE_URL=твой_project_url
-VITE_SUPABASE_ANON_KEY=твой_publishable_key
+VITE_SUPABASE_URL=ваш_project_url
+VITE_SUPABASE_ANON_KEY=ваш_publishable_key
 ```
 
 Запустите:
