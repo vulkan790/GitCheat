@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import TopicPage from '../pages/TopicPage.vue'
 import HomePage from '../pages/HomePage.vue'
 import CommandPage from '../pages/CommandPage.vue'
 
@@ -11,12 +10,7 @@ const routes = [
         component: HomePage
     },
     {
-        path: '/:topic',
-        name: 'topic',
-        component: TopicPage
-    },
-    {
-        path: '/:topic/:slug',
+        path: '/command/:slug',
         name: 'command',
         component: CommandPage
     },
