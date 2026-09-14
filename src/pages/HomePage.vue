@@ -1,29 +1,37 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../lib/supabase.js'
-import CommandCard from '../components/CommandCard.vue'
 
 const commands = ref([])
-const categories = ref([])
-const search = ref('')
-const activeCategory = ref(null)
-const loading = ref(true)
+const topics = ref([])
+const activeTopic = ref('all')
+const query = ref('')
+const loading = ref(null)
+const loadEsrror = ref(null)
 
 onMounted(async () => {
-    const [cmd, cat] = await Promise.all([
-        supabase.from('commands').select('*, category:categories(name, slug)').order('name'),
-        supabase.from('categories').select('*').order('name')
+    const [cmdRes, topicRes] = await Promise.all([
+        supabase.from('commands').select('name, slug, description, category:categories(topic:topics(slug, name))').order('name'),
+        supabase.from('topics').select('name, slug').order('id')
     ])
-    commands.value = cmd.data ?? []
-    categories.value = cat.data ?? []
+
+    if (cmdRes.error || topicRes.error)
+        loadError.value = true
+    else
+    {
+        commands.value = (cmdRes.data ?? []).filter(c => c.category?.topics?.slug)
+        topics.value = topicRes.data ?? []
+    }
+
     loading.value = false
 })
 
 const filtered = computed(() => {
-    return commands.value.filter((c) => {
-        const okSearch = c.name.toLowerCase().includes(search.value.toLowerCase())
-        const okCat = !activeCategory.value || c.category?.slug === activeCategory.value
-        return okSearch && okCat 
+    const q = query.value.trim().toLowerCase()
+    return commands.value.filter(c => {
+        const byTopic = activeTopic.value === 'all' || c.category.topic.slug === activeTopic.value
+        const byQuery = !q || c.name.toLowerCase().includes(q) || (c.description ?? '').toLowerCase().includes(q)
+        return byTopic && byQuery
     })
 })
 </script>
@@ -31,30 +39,7 @@ const filtered = computed(() => {
 <template>
     <div class="main-content">
         <div class="basic">
-            <code class="main-par">Шпаргалка по git под рукой</code>
-            <p class="sub-par">Найдите нужную команду за 2 секунды</p>
-        </div>
-        <input v-model="search" placeholder="🔍 git reset, отменить коммит..." />
-        <div class="chips">
-            <button 
-                :class="{ active: !activeCategory }"
-                @click="activeCategory = null">
-                Все
-            </button>
-            <button
-                v-for="cat in categories"
-                :key="cat.id"
-                :class="{ active: activeCategory === cat.slug }"
-                @click="activeCategory = cat.slug">
-                {{ cat.name }}
-            </button>
-        </div>
-        <p v-if="loading" class="state">Загрузка...</p>
-        <div v-else class="grid">
-            <CommandCard 
-                v-for="cmd in filtered"
-                :key="cmd.id"
-                :command="cmd"/>
+            <div class="main-par">Справочник разработчика</div>
         </div>
     </div>
 </template>

@@ -2,11 +2,19 @@ DROP TABLE IF EXISTS categories CASCADE;
 DROP TABLE IF EXISTS commands CASCADE;
 DROP TABLE IF EXISTS flags CASCADE;
 DROP TABLE IF EXISTS examples CASCADE;
+DROP TABLE IF EXISTS topics CASCADE;
+
+CREATE TABLE topics (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name text NOT NULL,
+  slug text NOT NULL UNIQUE
+);
 
 CREATE TABLE categories (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   name text NOT NULL,
-  slug text NOT NULL UNIQUE
+  slug text NOT NULL UNIQUE,
+  topic_id bigint references topics(id)
 );
 
 CREATE TABLE commands (
@@ -33,6 +41,10 @@ CREATE TABLE examples (
   description text
 );
 
+INSERT INTO topics (name, slug) VALUES
+  ('Git', 'git'),
+  ('SQL', 'sql');
+
 INSERT INTO categories (name, slug) VALUES
   ('Основы', 'basics'),
   ('Ветки', 'branching'),
@@ -44,6 +56,8 @@ INSERT INTO categories (name, slug) VALUES
   ('Теги', 'tags'),
   ('Продвинутое', 'advanced')
 ON conflict (slug) DO nothing;
+
+UPDATE categories SET topic_id = (SELECT id FROM topics WHERE slug = 'git') WHERE topic_id IS NULL;
 
 INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
   ('git init', 'init', (SELECT id FROM categories WHERE slug = 'basics'), 'Создаёт новый пустой репозиторий в текущей папке — появляется скрытая директория .git, где хранится вся история. С этой команды начинается работа с проектом.', 'git init [<папка>]', null);
@@ -350,12 +364,203 @@ INSERT INTO examples (command_id, code, description) VALUES
   ((SELECT id FROM commands WHERE slug='archive'), 'git archive --format=zip main -o site.zip', 'Собрать zip из ветки main'),
   ((SELECT id FROM commands WHERE slug='archive'), 'git archive HEAD -o snapshot.tar', 'Архив текущего состояния');
 
+INSERT INTO categories (name, slug, topic_id) VALUES
+  ('Выборка', 'querying', (SELECT id FROM topics WHERE slug = 'sql')),
+  ('Соединения', 'joins', (SELECT id FROM topics WHERE slug = 'sql')),
+  ('Агрегация', 'aggregation', (SELECT id FROM topics WHERE slug = 'sql')),
+  ('Изменение данных', 'dml', (SELECT id FROM topics WHERE slug = 'sql')),
+  ('Определение схемы', 'ddl', (SELECT id FROM topics WHERE slug = 'sql')),
+  ('Подзапросы и CTE', 'subqueries', (SELECT id FROM topics WHERE slug = 'sql'));
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('SELECT', 'select', (SELECT id FROM categories WHERE slug = 'querying'), 'Извлекает данные из таблицы: перечисляете нужные столбцы (или * для всех) и таблицу, откуда их взять.', 'SELECT [DISTINCT] столбцы FROM таблица', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'select'), '*', 'Выбрать все столбцы таблицы'),
+  ((SELECT id FROM commands WHERE slug = 'select'), 'DISTINCT', 'Убрать повторяющиеся строки из результата'),
+  ((SELECT id FROM commands WHERE slug = 'select'), 'AS', 'Задать псевдоним столбцу или таблице');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'select'), 'SELECT id, name FROM users;', 'Выбрать два столбца из таблицы users'),
+  ((SELECT id FROM commands WHERE slug = 'select'), 'SELECT name AS имя FROM users;', 'Выбрать столбец с псевдонимом');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('WHERE', 'where', (SELECT id FROM categories WHERE slug = 'querying'), 'Фильтрует строки по условию — в результат попадают только те, что ему удовлетворяют.', 'SELECT ... FROM таблица WHERE условие', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'where'), 'IN', 'Проверить, входит ли значение в список'),
+  ((SELECT id FROM commands WHERE slug = 'where'), 'BETWEEN', 'Проверить попадание в диапазон (включительно)'),
+  ((SELECT id FROM commands WHERE slug = 'where'), 'LIKE', 'Поиск по шаблону: % — любые символы, _ — один символ'),
+  ((SELECT id FROM commands WHERE slug = 'where'), 'IS NULL', 'Проверить, что значение пустое (NULL)');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'where'), 'SELECT * FROM users WHERE age >= 18;', 'Пользователи 18 лет и старше'),
+  ((SELECT id FROM commands WHERE slug = 'where'), 'SELECT * FROM users WHERE city IN (''Москва'', ''Казань'');', 'Пользователи из двух городов'),
+  ((SELECT id FROM commands WHERE slug = 'where'), 'SELECT * FROM users WHERE name LIKE ''А%'';', 'Имена, начинающиеся на А');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('ORDER BY', 'order-by', (SELECT id FROM categories WHERE slug = 'querying'), 'Сортирует результат по одному или нескольким столбцам.', 'SELECT ... FROM таблица ORDER BY столбец [ASC | DESC]', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'order-by'), 'ASC', 'По возрастанию (значение по умолчанию)'),
+  ((SELECT id FROM commands WHERE slug = 'order-by'), 'DESC', 'По убыванию');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'order-by'), 'SELECT * FROM users ORDER BY age DESC;', 'Сначала самые старшие'),
+  ((SELECT id FROM commands WHERE slug = 'order-by'), 'SELECT * FROM users ORDER BY city, name;', 'Сортировка по двум столбцам');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('LIMIT / OFFSET', 'limit', (SELECT id FROM categories WHERE slug = 'querying'), 'LIMIT ограничивает число строк, OFFSET пропускает первые N — вместе дают постраничный вывод.', 'SELECT ... FROM таблица LIMIT n [OFFSET m]', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'limit'), 'OFFSET', 'Пропустить первые m строк перед выборкой');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'limit'), 'SELECT * FROM users LIMIT 10;', 'Первые 10 строк'),
+  ((SELECT id FROM commands WHERE slug = 'limit'), 'SELECT * FROM users LIMIT 10 OFFSET 20;', 'Третья страница по 10 записей');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('INNER JOIN', 'inner-join', (SELECT id FROM categories WHERE slug = 'joins'), 'Соединяет строки двух таблиц по условию и оставляет только пары, для которых совпадение нашлось в обеих.', 'SELECT ... FROM a JOIN b ON a.id = b.a_id', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'inner-join'), 'ON', 'Условие соединения таблиц'),
+  ((SELECT id FROM commands WHERE slug = 'inner-join'), 'USING', 'Короткая запись, когда столбец связи назван одинаково');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'inner-join'), 'SELECT u.name, o.total FROM users u JOIN orders o ON u.id = o.user_id;', 'Пользователи и их заказы');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('LEFT JOIN', 'left-join', (SELECT id FROM categories WHERE slug = 'joins'), 'Возвращает все строки левой таблицы и совпадающие из правой; где совпадения нет, столбцы правой будут NULL.', 'SELECT ... FROM a LEFT JOIN b ON a.id = b.a_id', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'left-join'), 'ON', 'Условие соединения таблиц');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'left-join'), 'SELECT u.name, o.id FROM users u LEFT JOIN orders o ON u.id = o.user_id;', 'Все пользователи, даже без заказов'),
+  ((SELECT id FROM commands WHERE slug = 'left-join'), 'SELECT u.name FROM users u LEFT JOIN orders o ON u.id = o.user_id WHERE o.id IS NULL;', 'Пользователи без единого заказа');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('RIGHT / FULL JOIN', 'outer-join', (SELECT id FROM categories WHERE slug = 'joins'), 'RIGHT JOIN — зеркало LEFT: все строки правой таблицы. FULL JOIN — все строки обеих таблиц, с NULL там, где пары нет.', 'SELECT ... FROM a FULL JOIN b ON a.id = b.a_id', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'outer-join'), 'RIGHT JOIN', 'Все строки правой таблицы плюс совпадения из левой'),
+  ((SELECT id FROM commands WHERE slug = 'outer-join'), 'FULL JOIN', 'Все строки обеих таблиц');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'outer-join'), 'SELECT * FROM a FULL JOIN b ON a.id = b.a_id;', 'Полное внешнее соединение двух таблиц');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('GROUP BY', 'group-by', (SELECT id FROM categories WHERE slug = 'aggregation'), 'Группирует строки с одинаковым значением столбца, чтобы посчитать агрегаты по каждой группе. HAVING фильтрует сами группы.', 'SELECT столбец, COUNT(*) FROM таблица GROUP BY столбец [HAVING условие]', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'group-by'), 'HAVING', 'Фильтр по группам (в отличие от WHERE, работает после агрегации)');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'group-by'), 'SELECT city, COUNT(*) FROM users GROUP BY city;', 'Сколько пользователей в каждом городе'),
+  ((SELECT id FROM commands WHERE slug = 'group-by'), 'SELECT city, COUNT(*) FROM users GROUP BY city HAVING COUNT(*) > 100;', 'Только города, где больше 100 человек');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('COUNT / SUM / AVG …', 'aggregate', (SELECT id FROM categories WHERE slug = 'aggregation'), 'Агрегатные функции считают одно значение по набору строк: количество, сумму, среднее, минимум и максимум.', 'SELECT COUNT(*), SUM(столбец), AVG(столбец) FROM таблица', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'aggregate'), 'COUNT', 'Количество строк или ненулевых значений'),
+  ((SELECT id FROM commands WHERE slug = 'aggregate'), 'SUM', 'Сумма значений столбца'),
+  ((SELECT id FROM commands WHERE slug = 'aggregate'), 'AVG', 'Среднее значение'),
+  ((SELECT id FROM commands WHERE slug = 'aggregate'), 'MIN / MAX', 'Минимальное и максимальное значение');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'aggregate'), 'SELECT COUNT(*) FROM orders;', 'Общее число заказов'),
+  ((SELECT id FROM commands WHERE slug = 'aggregate'), 'SELECT AVG(total) FROM orders;', 'Средний чек');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('INSERT', 'insert', (SELECT id FROM categories WHERE slug = 'dml'), 'Добавляет новые строки в таблицу.', 'INSERT INTO таблица (столбцы) VALUES (значения)', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'insert'), 'VALUES', 'Список значений для вставки'),
+  ((SELECT id FROM commands WHERE slug = 'insert'), 'RETURNING', 'Вернуть данные добавленных строк (например, сгенерированный id)'),
+  ((SELECT id FROM commands WHERE slug = 'insert'), 'ON CONFLICT', 'Что делать при нарушении уникальности: пропустить или обновить');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'insert'), 'INSERT INTO users (name, age) VALUES (''Иван'', 30);', 'Добавить одного пользователя'),
+  ((SELECT id FROM commands WHERE slug = 'insert'), 'INSERT INTO users (name) VALUES (''Анна'') RETURNING id;', 'Вставить и получить новый id');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('UPDATE', 'update', (SELECT id FROM categories WHERE slug = 'dml'), 'Изменяет значения в уже существующих строках.', 'UPDATE таблица SET столбец = значение WHERE условие', 'Без WHERE команда обновит ВСЕ строки таблицы. Всегда проверяйте условие.');
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'update'), 'SET', 'Какие столбцы и на какие значения менять'),
+  ((SELECT id FROM commands WHERE slug = 'update'), 'WHERE', 'Ограничить, какие строки обновлять'),
+  ((SELECT id FROM commands WHERE slug = 'update'), 'RETURNING', 'Вернуть обновлённые строки');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'update'), 'UPDATE users SET age = 31 WHERE id = 1;', 'Обновить возраст одного пользователя'),
+  ((SELECT id FROM commands WHERE slug = 'update'), 'UPDATE orders SET status = ''paid'' WHERE id = 42;', 'Пометить заказ оплаченным');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('DELETE', 'delete', (SELECT id FROM categories WHERE slug = 'dml'), 'Удаляет строки из таблицы.', 'DELETE FROM таблица WHERE условие', 'Без WHERE команда удалит ВСЕ строки таблицы. Действие необратимо.');
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'delete'), 'WHERE', 'Ограничить, какие строки удалять'),
+  ((SELECT id FROM commands WHERE slug = 'delete'), 'RETURNING', 'Вернуть удалённые строки');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'delete'), 'DELETE FROM users WHERE id = 1;', 'Удалить одного пользователя'),
+  ((SELECT id FROM commands WHERE slug = 'delete'), 'DELETE FROM orders WHERE status = ''cancelled'';', 'Удалить все отменённые заказы');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('CREATE TABLE', 'create-table', (SELECT id FROM categories WHERE slug = 'ddl'), 'Создаёт новую таблицу с описанием столбцов, их типов и ограничений.', 'CREATE TABLE имя (столбец тип [ограничения], ...)', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'create-table'), 'PRIMARY KEY', 'Первичный ключ — уникальный идентификатор строки'),
+  ((SELECT id FROM commands WHERE slug = 'create-table'), 'NOT NULL', 'Запретить пустые значения в столбце'),
+  ((SELECT id FROM commands WHERE slug = 'create-table'), 'references', 'Внешний ключ — ссылка на строку другой таблицы'),
+  ((SELECT id FROM commands WHERE slug = 'create-table'), 'DEFAULT', 'Значение по умолчанию, если не указано явно');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'create-table'), 'CREATE TABLE users (id bigserial PRIMARY KEY, name text NOT NULL);', 'Простая таблица с ключом'),
+  ((SELECT id FROM commands WHERE slug = 'create-table'), 'CREATE TABLE orders (id bigserial PRIMARY KEY, user_id bigint references users(id));', 'Таблица со ссылкой на users');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('ALTER TABLE', 'alter-table', (SELECT id FROM categories WHERE slug = 'ddl'), 'Изменяет структуру существующей таблицы: добавляет, удаляет или переименовывает столбцы.', 'ALTER TABLE имя ADD COLUMN | DROP COLUMN | RENAME ...', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'alter-table'), 'ADD COLUMN', 'Добавить новый столбец'),
+  ((SELECT id FROM commands WHERE slug = 'alter-table'), 'DROP COLUMN', 'Удалить столбец вместе с данными'),
+  ((SELECT id FROM commands WHERE slug = 'alter-table'), 'RENAME', 'Переименовать таблицу или столбец');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'alter-table'), 'ALTER TABLE users ADD COLUMN email text;', 'Добавить столбец email'),
+  ((SELECT id FROM commands WHERE slug = 'alter-table'), 'ALTER TABLE users RENAME COLUMN name TO full_name;', 'Переименовать столбец');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('DROP / TRUNCATE', 'drop-truncate', (SELECT id FROM categories WHERE slug = 'ddl'), 'DROP TABLE удаляет таблицу целиком вместе со структурой. TRUNCATE быстро очищает все строки, оставляя саму таблицу.', 'DROP TABLE имя  |  TRUNCATE TABLE имя', 'Обе команды необратимы: DROP уничтожает таблицу, TRUNCATE стирает все строки без отбора по WHERE.');
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'drop-truncate'), 'CASCADE', 'Удалить вместе с зависимыми объектами (внешние ключи и т.п.)'),
+  ((SELECT id FROM commands WHERE slug = 'drop-truncate'), 'IF EXISTS', 'Не выдавать ошибку, если таблицы уже нет');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'drop-truncate'), 'DROP TABLE IF EXISTS temp_data;', 'Удалить таблицу, если она существует'),
+  ((SELECT id FROM commands WHERE slug = 'drop-truncate'), 'TRUNCATE TABLE logs;', 'Быстро очистить таблицу от всех строк');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('CREATE INDEX', 'index', (SELECT id FROM categories WHERE slug = 'ddl'), 'Создаёт индекс по столбцу, чтобы ускорить поиск и сортировку по нему. Ускоряет чтение, но чуть замедляет запись.', 'CREATE [UNIQUE] INDEX имя ON таблица (столбец)', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'index'), 'UNIQUE', 'Индекс, который также запрещает повторяющиеся значения');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'index'), 'CREATE INDEX idx_users_email ON users (email);', 'Ускорить поиск по email'),
+  ((SELECT id FROM commands WHERE slug = 'index'), 'CREATE UNIQUE INDEX idx_users_login ON users (login);', 'Уникальный индекс по логину');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('Подзапрос (Subquery)', 'subquery', (SELECT id FROM categories WHERE slug = 'subqueries'), 'Запрос внутри другого запроса — его результат используется как значение, список или таблица во внешнем запросе.', 'SELECT ... WHERE столбец IN (SELECT ...)', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'subquery'), 'IN', 'Сравнить значение со списком из подзапроса'),
+  ((SELECT id FROM commands WHERE slug = 'subquery'), 'EXISTS', 'Проверить, вернул ли подзапрос хотя бы одну строку');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'subquery'), 'SELECT * FROM users WHERE id IN (SELECT user_id FROM orders);', 'Пользователи, у которых есть заказы'),
+  ((SELECT id FROM commands WHERE slug = 'subquery'), 'SELECT name FROM users u WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id);', 'То же самое через EXISTS');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('CTE (WITH)', 'cte', (SELECT id FROM categories WHERE slug = 'subqueries'), 'Именованный временный результат в начале запроса. Делает сложные запросы читаемее и позволяет рекурсию.', 'WITH имя AS (SELECT ...) SELECT ... FROM имя', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'cte'), 'WITH', 'Объявить временный именованный набор данных'),
+  ((SELECT id FROM commands WHERE slug = 'cte'), 'RECURSIVE', 'Разрешить CTE ссылаться на себя (деревья, иерархии)');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'cte'), 'WITH top AS (SELECT * FROM users ORDER BY age DESC LIMIT 5) SELECT * FROM top;', 'Вынести выборку в отдельный блок');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('UNION / UNION ALL', 'union', (SELECT id FROM categories WHERE slug = 'subqueries'), 'Объединяет результаты двух запросов в один список. UNION убирает дубликаты, UNION ALL оставляет всё.', 'SELECT ... UNION [ALL] SELECT ...', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'union'), 'UNION', 'Объединить и убрать повторяющиеся строки'),
+  ((SELECT id FROM commands WHERE slug = 'union'), 'UNION ALL', 'Объединить без удаления дубликатов (быстрее)');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'union'), 'SELECT name FROM clients UNION SELECT name FROM partners;', 'Общий список без повторов');
+
+INSERT INTO commands (name, slug, category_id, description, syntax, warning) VALUES
+  ('CASE WHEN', 'case', (SELECT id FROM categories WHERE slug = 'subqueries'), 'Условное выражение внутри запроса — возвращает разные значения в зависимости от условия, как if/else.', 'CASE WHEN условие THEN значение ELSE значение END', null);
+INSERT INTO flags (command_id, flag, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'case'), 'ELSE', 'Значение, если ни одно из условий не подошло');
+INSERT INTO examples (command_id, code, description) VALUES
+  ((SELECT id FROM commands WHERE slug = 'case'), 'SELECT name, CASE WHEN age >= 18 THEN ''взрослый'' ELSE ''ребёнок'' END AS группа FROM users;', 'Пометить пользователей по возрасту');
+
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE commands ENABLE ROW LEVEL SECURITY;
 ALTER TABLE flags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE examples ENABLE ROW LEVEL SECURITY;
+ALTER TABLE topics ENABLE ROW LEVEL SECURITY;
 
 CREATE policy "read categories" ON categories FOR SELECT USING (TRUE);
 CREATE policy "read commands" ON commands FOR SELECT USING (TRUE);
 CREATE policy "read flags" ON flags FOR SELECT USING (TRUE);
 CREATE policy "read examples" ON examples FOR SELECT USING (TRUE);
+CREATE policy "read topics" ON topics FOR SELECT USING (TRUE);
