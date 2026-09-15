@@ -2,7 +2,7 @@
 
 Веб-шпаргалка для разработчика с поиском и фильтрацией по категориям и разделам. Быстрое нахождение нужной команды, просмотр синтаксиса, флагов и примеры использования.
 
-**Рабочий сайт:** https://git-cheat.vercel.app
+**Рабочий сайт:** https://git-cheat-sigma.vercel.app
 
 ## Возможности
 
@@ -52,7 +52,7 @@ npm run dev
 
 A web-based cheat sheet for developers with search and category filtering. Quickly find the command you need and view its syntax, flags, and usage examples.
 
-**Live site:** https://git-cheat.vercel.app
+**Live site:** https://git-cheat-sigma.vercel.app
 
 ## Features
 
