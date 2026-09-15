@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '../lib/supabase.js'
+import { applyTheme } from '../lib/themes.js'
 
 const route = useRoute()
 const commands = ref([])
@@ -13,14 +14,17 @@ async function loadCommand(slug)
     loading.value = true
     notFound.value = false
     
-    const { data, error } = await supabase.from('commands').select('*, category:categories(name, slug), flags(*), examples(*)').eq('slug', slug).single()
+    const { data, error } = await supabase.from('commands').select('*, category:categories(name, slug, topic:topics(slug, name)), flags(*), examples(*)').eq('slug', slug).single()
     if (error || !data)
     {
         commands.value = null
         notFound.value = true
     }
     else
+    {    
         commands.value = data
+        applyTheme(data.category?.topic?.slug)
+    }
     loading.value = false
 }
 
@@ -33,14 +37,14 @@ watch(() => route.params.slug, (slug) => loadCommand(slug), { immediate: true })
         <p v-else-if="notFound" class="state">Команда не найдена</p>
         <div v-else class="command">
             <p class="breadcrumbs">
-                Категории / {{ commands.category?.name }} / {{ commands.slug }}
+                {{ commands.category?.topic?.name }} / {{ commands.category?.name }} / {{ commands.name }}
             </p>
             <h1 class="command-name">{{ commands.name }}</h1>
             <span v-if="commands.category" class="badge">{{ commands.category.name }}</span>
             <p class="description">{{ commands.description }}</p>
             <h2 class="section-title">Синтаксис</h2>
             <pre class="code-block"><code>{{ commands.syntax }}</code></pre>
-            <template v-if="commands.flags.length">
+            <template v-if="commands.flags?.length">
                 <h2 class="section-title">Частые флаги</h2>
                 <div class="flags">
                     <div 
@@ -52,7 +56,7 @@ watch(() => route.params.slug, (slug) => loadCommand(slug), { immediate: true })
                     </div>
                 </div>
             </template>
-            <template v-if="commands.examples.length">
+            <template v-if="commands.examples?.length">
                 <h2 class="section-title">Примеры команды</h2>
                 <div 
                     v-for="ex in commands.examples"
@@ -68,5 +72,3 @@ watch(() => route.params.slug, (slug) => loadCommand(slug), { immediate: true })
         </div>
     </div>
 </template>
-
-<style scoped src="../style.css"></style>

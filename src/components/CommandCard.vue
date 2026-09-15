@@ -15,5 +15,3 @@ defineProps({
         <p class="card-desc">{{ command.description }}</p>
     </RouterLink>
 </template>
-
-<style scoped src="../style.css"></style>

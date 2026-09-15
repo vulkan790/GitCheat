@@ -1,6 +1,6 @@
 # Git Cheat
 
-Веб-шпаргалка по командам Git с поиском и фильтрацией по категориям. Быстрое нахождение нужной команды, просмотр синтаксиса, флагов и примеры использования.
+Веб-шпаргалка для разработчика с поиском и фильтрацией по категориям и разделам. Быстрое нахождение нужной команды, просмотр синтаксиса, флагов и примеры использования.
 
 **Рабочий сайт:** https://git-cheat.vercel.app
 
@@ -8,6 +8,7 @@
 
 - Поиск команд по названию
 - Фильтрация по категориям (основы, ветки, удалённые, откат, stash, конфигурация)
+- Команды по разделам (Git, SQL, Alembic, Docker, Pytest, Vitest, Jest)
 - Детальная страница каждой команды: синтаксис, частые флаги, примеры, предупреждения
 - Адаптивная вёрстка для десктопа, планшетов и телефонов
 
@@ -49,7 +50,7 @@ npm run dev
 
 # Git Cheat
 
-A web-based Git command cheat sheet with search and category filtering. Quickly find the command you need and view its syntax, flags, and usage examples.
+A web-based cheat sheet for developers with search and category filtering. Quickly find the command you need and view its syntax, flags, and usage examples.
 
 **Live site:** https://git-cheat.vercel.app
 
@@ -57,6 +58,7 @@ A web-based Git command cheat sheet with search and category filtering. Quickly 
 
 - Search commands by name
 - Filter by category (basics, branching, remote, undo, stash, config)
+- Commands by section (Git, SQL, Alembic, Docker, Pytest, Vitest, Jest)
 - Detailed page for each command: syntax, common flags, examples, warnings
 - Responsive layout for desktop, tablet, and mobile
 
